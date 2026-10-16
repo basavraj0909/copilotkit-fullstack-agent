@@ -1,0 +1,36 @@
+# Environment variables (CRITICAL: DO NOT COMMIT SENSITIVE KEYS)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Frontend / Node
+node_modules/
+frontend/node_modules/
+frontend/dev-logs.txt
+dev-logs.txt
+frontend/dist/
+dist/
+.npm
+npm-debug.log*
+
+# macOS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints
