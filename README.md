@@ -140,3 +140,62 @@ npm run test:e2e
 | **Run test suite** | `python test_agent.py` |
 | **Kill hanging processes on ports** | `lsof -ti :3002 -ti :4002 -ti :8002 -ti :8009 \| xargs kill -9` |
 | **Check open ports** | `lsof -i :3002 -i :4002 -i :8002 -i :8009` |
+
+
+---
+
+## 💡 How It Works Under the Hood
+
+### 🔄 The Life of a Single Message
+
+When you send a message (e.g. `"Hi"`) from `http://localhost:3002`:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 User
+    participant React as 💻 React Frontend (:3002)
+    participant Gateway as 🚪 CopilotRuntime Gateway (:4002)
+    participant Backend as 🐍 LangGraph Agent (:8002)
+    participant LLM as ⚡ Groq LLM API
+
+    User->>React: Types "Hi" and sends message
+    React->>Gateway: POST /copilotkit/run (payload + state)
+    Gateway->>Backend: Proxies request (agentId="default")
+    Backend->>Backend: Loads session history from MemorySaver (threadId)
+    Backend->>LLM: Requests completion with full message context
+    LLM-->>Backend: Streams raw token deltas
+    Backend-->>Gateway: Streams SSE events via AG-UI protocol
+    Gateway-->>React: Forwards token stream
+    React-->>User: Renders live typewriter response in chat bubble
+```
+
+#### Step-by-Step Flow:
+
+1. **Client Dispatch (`React :3002`)**  
+   The user enters a prompt. CopilotKit hooks intercept the input, attach the active conversation state, and issue a request to the runtime gateway.
+
+2. **Gateway Resolution (`Hono Gateway :4002`)**  
+   The gateway checks `agentId = "default"` and routes the payload to the corresponding Python backend.
+
+3. **Context Reconstruction (`LangGraph :8002`)**  
+   LangGraph loads conversation history from `MemorySaver` using the session's `threadId`, constructs the complete prompt context, and executes the graph.
+
+4. **Inference Execution (`Groq API`)**  
+   Groq processes the prompt using ultra-low-latency LPU inference (`openai/gpt-oss-120b`) and streams token chunks back to LangGraph.
+
+5. **SSE Protocol Streaming (`AG-UI Protocol`)**  
+   LangGraph wraps the output into Server-Sent Events (SSE) via `CopilotKitMiddleware`. Tokens stream through the Gateway and render live in the React chat bubble.
+
+---
+
+### ⚖️ Traditional Chatbot vs. Agentic Architecture
+
+| Feature | Simple Chatbot (Toy Project) | This Project (Agentic Architecture) |
+| :--- | :--- | :--- |
+| **Connection** | React directly calls OpenAI `/chat/completions` REST API | **3-Tier Decoupled Gateway Pattern**<br>`React` ➔ `CopilotRuntime` ➔ `Python Agent` ➔ `LLM` |
+| **Provider Agnostic** | Hardcoded to one provider (e.g., OpenAI) | **Hot-Swappable Multi-Provider**<br>Switch between **Groq**, **OpenAI**, and **Google Gemini** without UI changes |
+| **Protocol** | Static JSON (`{"reply": "..."}`) | **AG-UI Streaming Protocol**<br>Server-Sent Events (SSE) with token deltas & tool lifecycle events |
+| **Logic Engine** | Basic prompt string | **LangGraph State Graph**<br>Directed cyclic graph with nodes, conditional edges, and middleware |
+| **Memory** | Lost on refresh or stored in browser `localStorage` | **Server-Side Checkpointing**<br>Thread-safe state persistence via `MemorySaver` and `threadId` |
+

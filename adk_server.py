@@ -15,15 +15,17 @@ if not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"):
 gemini_agent = LlmAgent(
     name="assistant",
     model="gemini-3.8-flash",
-    instruction="Be helpful and fun!",
-)
+    instruction="Be helpful and fun!",  # instruction: The System Prompt sent to the LLM (Gemini) before any conversation begins:
+)  # It defines the agent's persona, tone, and rules.
+# It tells the model how to act and respond to every message.
+# It is the exact equivalent of system_prompt in main.py
 
 adk_agent = ADKAgent(
     adk_agent=gemini_agent,
     app_name="demo_app",
     user_id="demo_user",
     session_timeout_seconds=3600,
-    use_in_memory_services=True,
+    use_in_memory_services=True,  # state management
 )
 
 app_adk = FastAPI()

@@ -37,14 +37,33 @@ Unlike traditional web applications where a frontend either calls an API or dire
         Groq / OpenAI API             Google Gemini API
 ```
 
-### Port Mapping & Responsibilities
+### 🔌 Port Mapping & Service Breakdown
 
-| Port | Service | Tech Stack | Entry Point | Responsibility |
-| :--- | :--- | :--- | :--- | :--- |
-| **3002** | Frontend Web App | React 19, Vite, TailwindCSS | `frontend/src/App.tsx` | User interface and live typing display |
-| **4002** | CopilotKit Runtime | Node.js, Hono, `@copilotkit/runtime` | `frontend/server.ts` | API gateway routing requests to the target agent |
-| **8002** | LangGraph Agent | Python 3.12, FastAPI, LangGraph | `main.py` | Groq / OpenAI agent with tools & memory |
-| **8009** | Google ADK Agent | Python 3.12, FastAPI, Google ADK | `adk_server.py` | Google Gemini agent with in-memory session |
+|     Port     |     Service      |     Tech Stack               | Entry Point |
+| :---:        | :---             | :---                         | :---      |
+| **`3002`** | 🌐 **Frontend UI** | React 19 + Vite + TailwindCSS | [`frontend/src/App.tsx`](frontend/src/App.tsx) |
+| **`4002`** | 🚪 **Agent Gateway** | Node.js + Hono + `@copilotkit/runtime` | [`frontend/server.ts`](frontend/server.ts) |
+| **`8002`** | 🧠 **LangGraph Agent** | Python 3.12 + FastAPI + LangGraph | [`main.py`](main.py) |
+| **`8009`** | 🤖 **Google ADK Agent** | Python 3.12 + FastAPI + Google GenAI | [`adk_server.py`](adk_server.py) |
+
+#### Service Responsibilities:
+
+- **🌐 Frontend Web App (`:3002`)**
+  - **Role**: Renders the chat interface, streams response tokens in real-time, and displays Generative UI components.
+  - **Proxy**: Automatically forwards all `/api/copilotkit` traffic to the gateway on port `4002`.
+
+- **🚪 Agent Gateway / CopilotKit Runtime (`:4002`)**
+  - **Role**: Multi-agent router and protocol translator. Reads `agentId` from the frontend and forwards to the target Python backend:
+    - `agentId = "default"` ➔ routes to LangGraph (`http://localhost:8002`)
+    - `agentId = "gemini"`  ➔ routes to ADK (`http://localhost:8009`)
+
+- **🧠 LangGraph Python Agent (`:8002`)**
+  - **Role**: Handles conversation logic and multi-turn session memory using `MemorySaver`.
+  - **Models**: Supported via **Groq** (`openai/gpt-oss-120b`) or **OpenAI** (`gpt-4.1`).
+
+- **🤖 Google ADK Python Agent (`:8009`)**
+  - **Role**: Runs Google's Agent Development Kit with stateful in-memory conversation services.
+  - **Models**: Supported via **Google Gemini** (`gemini-2.0-flash`).
 
 ---
 
