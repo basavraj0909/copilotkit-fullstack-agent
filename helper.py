@@ -70,7 +70,23 @@ _frontends: dict = {} # port → subprocess.Popen  (frontends we started)
 
 
 def _kill_port(port):
-    """Kill any process currently listening on *port*."""
+    """Kill any process currently listening on *port* (Windows, macOS, Linux)."""
+    # Windows native check
+    if os.name == "nt":
+        try:
+            out = subprocess.run(
+                ["netstat", "-ano"], capture_output=True, text=True, check=False
+            ).stdout
+            for line in out.splitlines():
+                if f":{port}" in line and "LISTENING" in line:
+                    parts = line.strip().split()
+                    pid = parts[-1]
+                    if pid and pid != "0":
+                        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
+            return
+        except Exception:
+            return
+
     # Try lsof (macOS, full Linux)
     try:
         result = subprocess.run(
@@ -289,7 +305,7 @@ def _node_env():
     if target:
         node_bin = os.path.join(versions_dir, target, "bin")
         if os.path.isdir(node_bin):
-            env["PATH"] = f"{node_bin}:{env.get('PATH', '')}"
+            env["PATH"] = f"{node_bin}{os.pathsep}{env.get('PATH', '')}"
 
     return env
 
@@ -300,8 +316,9 @@ def install_frontend(frontend_dir="frontend"):
     env = _node_env()
 
     print("Installing frontend dependencies ...")
+    npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
     proc = subprocess.Popen(
-        ["npm", "install"],
+        [npm_cmd, "install"],
         cwd=frontend_dir, env=env,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True,
@@ -310,7 +327,7 @@ def install_frontend(frontend_dir="frontend"):
         print(line, end="", flush=True)
     proc.wait()
     if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, ["npm", "install"])
+        raise subprocess.CalledProcessError(proc.returncode, [npm_cmd, "install"])
 
     print("✓ Frontend dependencies installed")
 
@@ -329,20 +346,11 @@ def start_frontend(port, frontend_dir="frontend"):
     if not os.path.exists(os.path.join(frontend_dir, "node_modules")):
         install_frontend(frontend_dir=os.path.basename(frontend_dir))
 
-    # log_path = os.path.join(frontend_dir, "dev-logs.txt")
-    # log_file = open(log_path, "w")
-    # proc = subprocess.Popen(
-    #     ["npm", "run", "dev", "--", "--port", str(port)],
-    #     cwd=frontend_dir,
-    #     env=env,
-    #     stdout=log_file,
-    #     stderr=subprocess.STDOUT,
-    # )
-    # _frontends[port] = proc
     log_path = os.path.join(frontend_dir, "dev-logs.txt")
     log_file = open(log_path, "w")
+    npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
     proc = subprocess.Popen(
-        ["npm", "run", "dev", "--", "--port", str(port)],
+        [npm_cmd, "run", "dev"],
         cwd=frontend_dir,
         env=env,
         stdout=log_file,

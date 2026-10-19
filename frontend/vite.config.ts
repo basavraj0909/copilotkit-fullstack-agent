@@ -11,11 +11,12 @@ export default defineConfig({
     },
   },
   server: {
+    port: 3002,
     host: "0.0.0.0",
     allowedHosts: true,
     strictPort: true,
     proxy: {
-      "/api/copilotkit": "http://localhost:4002",
+      "/api/copilotkit": "http://127.0.0.1:4002",
     },
   },
 });

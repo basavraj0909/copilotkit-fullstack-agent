@@ -143,19 +143,38 @@ _server_lock = threading.Lock()
 
 
 def _kill_port(port: int) -> None:
-    """Kill any process currently listening on *port*."""
-    try:
-        result = _sp.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
-        for pid in result.stdout.strip().split():
-            if pid:
-                print(
-                    f"⚠ Found existing process (PID {pid}) on port {port} — killing it"
-                )
-                os.kill(int(pid), 9)
-        if result.stdout.strip():
+    """Kill any process currently listening on *port* (cross-platform for Windows, macOS, Linux)."""
+    if sys.platform == "win32":
+        try:
+            # Query active TCP connections on Windows and kill listening PID
+            out = _sp.run(
+                ["netstat", "-ano"], capture_output=True, text=True, check=False
+            ).stdout
+            for line in out.splitlines():
+                if f":{port}" in line and "LISTENING" in line:
+                    parts = line.strip().split()
+                    pid = parts[-1]
+                    if pid and pid != "0":
+                        print(
+                            f"⚠ Found existing process (PID {pid}) on port {port} — killing it"
+                        )
+                        _sp.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
             time.sleep(0.5)
-    except Exception:
-        pass
+        except Exception:
+            pass
+    else:
+        try:
+            result = _sp.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
+            for pid in result.stdout.strip().split():
+                if pid:
+                    print(
+                        f"⚠ Found existing process (PID {pid}) on port {port} — killing it"
+                    )
+                    os.kill(int(pid), 9)
+            if result.stdout.strip():
+                time.sleep(0.5)
+        except Exception:
+            pass
 
 
 def load_graph(model_name: str = MODEL):

@@ -7,7 +7,7 @@ An enterprise agentic application featuring a React UI powered by **CopilotKit**
 ## 🏗️ Architecture
 
 ```text
-React (:3002) ──► CopilotKit Runtime (:4002) ──► FastAPI Agent (:8002 / :8009) ──► LLM (Groq / OpenAI / Gemini)
+React (Port 3002) ──► CopilotKit Runtime (Port 4002) ──► FastAPI Agent (Port 8002 / 8009) ──► LLM (Groq / OpenAI / Gemini)
 ```
 
 ### Port Mapping & Services
@@ -37,11 +37,22 @@ git clone https://github.com/basavraj0909/copilotkit-fullstack-agent.git
 cd copilotkit-fullstack-agent
 
 # 2. Setup Python virtual environment
-python3.12 -m venv venv
+# On macOS / Linux:
+python3 -m venv venv
 source venv/bin/activate
+
+# On Windows (PowerShell):
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# On Windows (Command Prompt):
+python -m venv venv
+venv\Scripts\activate.bat
+
+# 3. Install Python dependencies
 pip install -r requirements.txt
 
-# 3. Setup Frontend dependencies
+# 4. Setup Frontend dependencies
 cd frontend
 npm install
 cd ..
@@ -53,6 +64,7 @@ Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
+*(On Windows Command Prompt: `copy .env.example .env`)*
 
 Open `.env` and set your active key. For example, using **Groq** for high-speed inference:
 ```ini
@@ -75,7 +87,10 @@ To run the full stack, open **two separate terminal windows**:
 
 ### Terminal 1: Backend Agent Server
 ```bash
-source venv/bin/activate
+# Activate virtual environment:
+# macOS/Linux: source venv/bin/activate
+# Windows PowerShell: .\venv\Scripts\Activate.ps1
+# Windows CMD: venv\Scripts\activate.bat
 
 # Option A: Run LangGraph Agent (Groq / OpenAI) - Port 8002
 python main.py
@@ -87,10 +102,10 @@ python main.py
 ### Terminal 2: Frontend UI & CopilotKit Gateway
 ```bash
 cd frontend
-npm run dev -- --port 3002
+npm run dev
 ```
 
-This starts:
+This starts (cross-platform on Windows, macOS, and Linux):
 - **CopilotKit API Gateway** at `http://localhost:4002`
 - **React Web App** at `http://localhost:3002`
 
@@ -132,15 +147,15 @@ npm run test:e2e
 
 ## 🧰 Useful Commands
 
-| Task | Command |
-| :--- | :--- |
-| **Run LangGraph backend** | `python main.py` |
-| **Run Gemini backend** | `python adk_server.py` |
-| **Run Frontend & Gateway** | `cd frontend && npm run dev -- --port 3002` |
-| **Run test suite** | `python test_agent.py` |
-| **Kill hanging processes on ports** | `lsof -ti :3002 -ti :4002 -ti :8002 -ti :8009 \| xargs kill -9` |
-| **Check open ports** | `lsof -i :3002 -i :4002 -i :8002 -i :8009` |
-
+| Task                                | macOS / Linux                                                   | Windows (PowerShell)                                                                          | Windows (CMD)                                                                        |
+| :---------------------------------- | :-------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| **Activate venv**                   | `source venv/bin/activate`                                      | `.\venv\Scripts\Activate.ps1`                                                                 | `venv\Scripts\activate.bat`                                                          |
+| **Run LangGraph backend**           | `python main.py`                                                | `python main.py`                                                                              | `python main.py`                                                                     |
+| **Run Gemini backend**              | `python adk_server.py`                                          | `python adk_server.py`                                                                        | `python adk_server.py`                                                               |
+| **Run Frontend & Gateway**          | `cd frontend && npm run dev`                                    | `cd frontend && npm run dev`                                                                  | `cd frontend && npm run dev`                                                         |
+| **Run test suite**                  | `python test_agent.py`                                          | `python test_agent.py`                                                                        | `python test_agent.py`                                                               |
+| **Kill hanging processes on ports** | `lsof -ti :3002 -ti :4002 -ti :8002 -ti :8009 \| xargs kill -9` | `Stop-Process -Id (Get-NetTCPConnection -LocalPort 3002,4002,8002,8009).OwningProcess -Force` | `for /f "tokens=5" %a in ('netstat -aon ^\| findstr :3002') do taskkill /f /pid %a`  |
+| **Check open ports**                | `lsof -i :3002 -i :4002 -i :8002 -i :8009`                      | `Get-NetTCPConnection -LocalPort 3002,4002,8002,8009`                                         | `netstat -ano \| findstr LISTENING`                                                  |
 
 ---
 
@@ -191,11 +206,12 @@ sequenceDiagram
 
 ### ⚖️ Traditional Chatbot vs. Agentic Architecture
 
-| Feature | Simple Chatbot (Toy Project) | This Project (Agentic Architecture) |
-| :--- | :--- | :--- |
-| **Connection** | React directly calls OpenAI `/chat/completions` REST API | **3-Tier Decoupled Gateway Pattern**<br>`React` ➔ `CopilotRuntime` ➔ `Python Agent` ➔ `LLM` |
-| **Provider Agnostic** | Hardcoded to one provider (e.g., OpenAI) | **Hot-Swappable Multi-Provider**<br>Switch between **Groq**, **OpenAI**, and **Google Gemini** without UI changes |
-| **Protocol** | Static JSON (`{"reply": "..."}`) | **AG-UI Streaming Protocol**<br>Server-Sent Events (SSE) with token deltas & tool lifecycle events |
-| **Logic Engine** | Basic prompt string | **LangGraph State Graph**<br>Directed cyclic graph with nodes, conditional edges, and middleware |
-| **Memory** | Lost on refresh or stored in browser `localStorage` | **Server-Side Checkpointing**<br>Thread-safe state persistence via `MemorySaver` and `threadId` |
+| Feature                | Simple Chatbot (Toy Project)                     | This Project (Agentic Architecture)                                                          |
+| :--------------------- | :----------------------------------------------- | :------------------------------------------------------------------------------------------- |
+| **Architecture**       | Single-tier (React directly calls LLM REST API)  | **3-Tier Decoupled Gateway Pattern** (`React :3002` ➔ `Gateway :4002` ➔ `Agent :8002` ➔ `LLM`) |
+| **Provider Agnostic**  | Hardcoded to a single vendor (e.g. OpenAI only)  | **Hot-Swappable Multi-Provider**: Toggle **Groq**, **OpenAI**, or **Gemini** via config      |
+| **Streaming Protocol** | Static JSON payload (`{"reply": "..."}`)         | **AG-UI Streaming Protocol**: Server-Sent Events (SSE) streaming real-time token deltas      |
+| **Execution Engine**   | Single prompt string sent to API                 | **LangGraph State Machine**: Directed cyclic graphs with conditional edges and tools         |
+| **State & Memory**     | Ephemeral (lost on refresh or in `localStorage`) | **Server-Side Checkpointing**: Thread-safe persistence via `MemorySaver` and `threadId`      |
+| **UI Interaction**     | Plain markdown text bubbles only                 | **Generative UI**: Agents dynamically control rich interactive React UI widgets               |
 

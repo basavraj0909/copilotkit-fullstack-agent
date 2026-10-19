@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --import tsx/esm watch-server.ts & vite",
+    "dev": "concurrently -k -n \"gateway,vite\" -c \"cyan,magenta\" \"node --import tsx/esm watch-server.ts\" \"vite\"",
     "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test"
@@ -31,6 +31,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4",
+    "concurrently": "^9.1.2",
     "tailwindcss": "^4",
     "tsx": "^4",
     "typescript": "^5",

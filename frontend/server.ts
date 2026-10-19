@@ -21,11 +21,11 @@ import { serve } from "@hono/node-server";
 
 // 1. Define agent remote endpoints
 const langGraphAgent = new LangGraphHttpAgent({
-  url: process.env.LANGGRAPH_DEPLOYMENT_URL || "http://localhost:8002",
+  url: process.env.LANGGRAPH_DEPLOYMENT_URL || "http://127.0.0.1:8002",
 });
 
 const adkAgent = new HttpAgent({
-  url: process.env.ADK_AGENT_URL || "http://localhost:8009",
+  url: process.env.ADK_AGENT_URL || "http://127.0.0.1:8009",
 });
 
 // 2. Register agents in the CopilotRuntime registry
