@@ -30,11 +30,11 @@ Unlike traditional web applications where a frontend either calls an API or dire
 │ 3A. Python Backend: LangGraph │ │ 3B. Python Backend: ADK   │
 │     URL: http://localhost:8002│ │     URL: http://localhost:8009│
 │     File: main.py             │ │     File: adk_server.py   │
-│     Model: OpenAI (gpt-4.1)   │ │     Model: Google Gemini  │
+│     Model: Groq / OpenAI      │ │     Model: Google Gemini  │
 └───────────────┬───────────────┘ └───────────┬───────────────┘
                 │                             │
                 ▼                             ▼
-          OpenAI API                  Google Gemini API
+        Groq / OpenAI API             Google Gemini API
 ```
 
 ### Port Mapping & Responsibilities
@@ -43,7 +43,7 @@ Unlike traditional web applications where a frontend either calls an API or dire
 | :--- | :--- | :--- | :--- | :--- |
 | **3002** | Frontend Web App | React 19, Vite, TailwindCSS | `frontend/src/App.tsx` | User interface and live typing display |
 | **4002** | CopilotKit Runtime | Node.js, Hono, `@copilotkit/runtime` | `frontend/server.ts` | API gateway routing requests to the target agent |
-| **8002** | LangGraph Agent | Python 3.12, FastAPI, LangGraph | `main.py` | OpenAI-based agent with tools & memory |
+| **8002** | LangGraph Agent | Python 3.12, FastAPI, LangGraph | `main.py` | Groq / OpenAI agent with tools & memory |
 | **8009** | Google ADK Agent | Python 3.12, FastAPI, Google ADK | `adk_server.py` | Google Gemini agent with in-memory session |
 
 ---

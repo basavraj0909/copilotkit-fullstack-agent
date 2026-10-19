@@ -11,7 +11,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 warnings.filterwarnings("ignore")
 
@@ -27,8 +27,59 @@ HOST = "0.0.0.0"
 PORT = 8002
 MODEL = "gpt-4.1"
 
+def _ensure_openai_api_key() -> None:
+    if os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY"):
+        return
+
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+    from helper import get_openai_api_key
+
+    os.environ["OPENAI_API_KEY"] = get_openai_api_key()
+
+
+def build_chat_model(model_name: str = MODEL):
+    load_dotenv(override=True)
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if groq_key:
+        groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+        masked = groq_key[:8] + "..." + groq_key[-4:]
+        print(f"✓ Active API Key in use: GROQ_API_KEY ({masked}) with model '{groq_model}'")
+        return ChatOpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=groq_key,
+            model=groq_model,
+        )
+
+    _ensure_openai_api_key()
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    masked = (api_key[:8] + "..." + api_key[-4:]) if api_key else "None"
+    print(f"✓ Active API Key in use: OPENAI_API_KEY ({masked}) with model '{model_name}'")
+    return ChatOpenAI(model=model_name, api_key=api_key if api_key else None)
+
+
+def build_graph(model_name: str = MODEL):
+    chat_model = build_chat_model(model_name=model_name)
+    return create_agent(
+        model=chat_model,
+        tools=[],
+        middleware=[CopilotKitMiddleware()],
+        checkpointer=MemorySaver(),
+        system_prompt=(
+            "You are a helpful assistant for a demo app with a few available UI tools. "
+            "Prefer using a matching frontend tool when it would present the answer clearly. "
+            "For chart requests, use concise made-up demo data when the user does not provide data. "
+            "Use pieChart for category distributions "
+            "and flightCard for a single flight summary when relevant. "
+            "Tool arguments must match the provided schema exactly."
+        ),
+    )
+
+
 app = FastAPI()
-graph = create_agent("openai:gpt-4.1")
+graph = build_graph()
 agent = LangGraphAGUIAgent(
     name="lesson2_agent",
     description="Lesson 2 chart agent",
@@ -54,37 +105,6 @@ def _kill_port(port: int) -> None:
             time.sleep(0.5)
     except Exception:
         pass
-
-
-def _ensure_openai_api_key() -> None:
-    if os.environ.get("OPENAI_API_KEY"):
-        return
-
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-
-    from helper import get_openai_api_key
-
-    os.environ["OPENAI_API_KEY"] = get_openai_api_key()
-
-
-def build_graph(model_name: str = MODEL):
-    _ensure_openai_api_key()
-    return create_agent(
-        model=ChatOpenAI(model=model_name),
-        tools=[],
-        middleware=[CopilotKitMiddleware()],
-        checkpointer=MemorySaver(),
-        system_prompt=(
-            "You are a helpful assistant for a demo app with a few available UI tools. "
-            "Prefer using a matching frontend tool when it would present the answer clearly. "
-            "For chart requests, use concise made-up demo data when the user does not provide data. "
-            "Use pieChart for category distributions "
-            "and flightCard for a single flight summary when relevant. "
-            "Tool arguments must match the provided schema exactly."
-        ),
-    )
 
 
 def load_graph(model_name: str = MODEL):
